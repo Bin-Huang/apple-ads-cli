@@ -15,7 +15,7 @@ const program = new Command();
 program
   .name("apple-search-ads-cli")
   .description("Apple Search Ads CLI for AI agents")
-  .version("0.1.0")
+  .version("1.0.0")
   .option("--format <format>", "Output format", "json")
   .option("--credentials <path>", "Path to credentials JSON file")
   .addHelpText(
