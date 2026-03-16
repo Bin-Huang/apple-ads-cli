@@ -26,7 +26,9 @@ Core endpoints covered:
 - **[Campaigns](https://developer.apple.com/documentation/apple_search_ads/campaigns)** -- list and inspect campaigns
 - **[Ad Groups](https://developer.apple.com/documentation/apple_search_ads/campaigns)** -- list ad groups under a campaign
 - **[Ads](https://developer.apple.com/documentation/apple_search_ads/campaigns)** -- list ads under an ad group
-- **[Keywords](https://developer.apple.com/documentation/apple_search_ads/campaigns)** -- list targeting keywords for an ad group
+- **[Keywords](https://developer.apple.com/documentation/apple_search_ads/campaigns)** -- list targeting keywords and negative keywords
+- **[Budget Orders](https://developer.apple.com/documentation/apple_search_ads/campaigns)** -- list and inspect budget orders
+- **[Apps](https://developer.apple.com/documentation/apple_search_ads/campaigns)** -- search apps, check eligibility, get app details
 - **[Reports](https://developer.apple.com/documentation/apple_search_ads/reports)** -- campaign, ad group, and keyword level reports
 
 ## Setup
@@ -114,6 +116,36 @@ Credentials are resolved in this order:
 
 All commands output pretty-printed JSON by default. Use `--format compact` for compact single-line JSON.
 
+### search-apps
+
+Search for iOS apps to promote in a campaign.
+
+```bash
+apple-search-ads-cli search-apps "my app name"
+apple-search-ads-cli search-apps "fitness" --return-own-apps --limit 10
+```
+
+Options:
+- `--return-own-apps` -- only return apps owned by the organization
+- `--limit <n>` -- number of results (default 20)
+- `--offset <n>` -- pagination offset (default 0)
+
+### app-eligibility
+
+Check if an app is eligible to promote in a campaign.
+
+```bash
+apple-search-ads-cli app-eligibility 123456789
+```
+
+### app
+
+Get app details by Adam ID.
+
+```bash
+apple-search-ads-cli app 123456789
+```
+
 ### acl
 
 Get the user access control list for all organizations. Useful for finding your `orgId`.
@@ -151,6 +183,27 @@ Get a specific campaign by ID.
 apple-search-ads-cli campaign 123456
 ```
 
+### budget-orders
+
+List all budget orders for the organization.
+
+```bash
+apple-search-ads-cli budget-orders
+apple-search-ads-cli budget-orders --limit 50
+```
+
+Options:
+- `--limit <n>` -- number of results (default 20)
+- `--offset <n>` -- pagination offset (default 0)
+
+### budget-order
+
+Get a specific budget order by ID.
+
+```bash
+apple-search-ads-cli budget-order 789012
+```
+
 ### adgroups
 
 List ad groups for a campaign.
@@ -184,6 +237,30 @@ List targeting keywords for an ad group within a campaign.
 ```bash
 apple-search-ads-cli keywords 123456 789012
 apple-search-ads-cli keywords 123456 789012 --limit 50
+```
+
+Options:
+- `--limit <n>` -- number of results (default 20)
+- `--offset <n>` -- pagination offset (default 0)
+
+### negative-keywords
+
+List negative keywords for an ad group.
+
+```bash
+apple-search-ads-cli negative-keywords 123456 789012
+```
+
+Options:
+- `--limit <n>` -- number of results (default 20)
+- `--offset <n>` -- pagination offset (default 0)
+
+### campaign-negative-keywords
+
+List campaign-level negative keywords.
+
+```bash
+apple-search-ads-cli campaign-negative-keywords 123456
 ```
 
 Options:

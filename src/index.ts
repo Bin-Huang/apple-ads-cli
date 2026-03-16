@@ -1,10 +1,13 @@
 #!/usr/bin/env node
 import { Command } from "commander";
 import { registerAclCommands } from "./commands/acl.js";
+import { registerAppCommands } from "./commands/apps.js";
 import { registerCampaignCommands } from "./commands/campaigns.js";
+import { registerBudgetOrderCommands } from "./commands/budget-orders.js";
 import { registerAdgroupCommands } from "./commands/adgroups.js";
 import { registerAdCommands } from "./commands/ads.js";
 import { registerKeywordCommands } from "./commands/keywords.js";
+import { registerNegativeKeywordCommands } from "./commands/negative-keywords.js";
 import { registerReportCommands } from "./commands/report.js";
 
 const program = new Command();
@@ -35,10 +38,13 @@ program.hook("preAction", () => {
 });
 
 registerAclCommands(program);
+registerAppCommands(program);
 registerCampaignCommands(program);
+registerBudgetOrderCommands(program);
 registerAdgroupCommands(program);
 registerAdCommands(program);
 registerKeywordCommands(program);
+registerNegativeKeywordCommands(program);
 registerReportCommands(program);
 
 if (process.argv.length <= 2) {
