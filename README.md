@@ -1,6 +1,6 @@
 # apple-ads-cli
 
-An Apple Ads CLI designed for AI agents. Wraps the official Apple Ads Campaign Management API (v5) with simple, agent-friendly commands.
+Give AI agents direct access to Apple Ads data. One command to query campaigns, keywords, creatives, and pull performance reports -- no SDK, no docs to read, no tokens wasted on boilerplate.
 
 **Works with:** OpenClaw, Claude Code, Cursor, Codex, and any agent that can run shell commands.
 
@@ -18,7 +18,7 @@ npx apple-ads-cli --help
 
 ## How it works
 
-This CLI is a thin wrapper around the official [Apple Ads Campaign Management API v5](https://developer.apple.com/documentation/apple_search_ads). It uses OAuth2 Bearer token authentication with the `X-AP-Context` organization header, and returns all API responses as JSON. No transformation or aggregation.
+Built on the official [Apple Ads Campaign Management API v5](https://developer.apple.com/documentation/apple_ads). Handles JWT-based OAuth2 authentication and the `X-AP-Context` organization header. Every command outputs structured JSON to stdout, ready for agents to parse without extra processing.
 
 Core endpoints covered:
 
