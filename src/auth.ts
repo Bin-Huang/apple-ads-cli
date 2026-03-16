@@ -10,7 +10,7 @@ export interface AppleAdsCredentials {
 const DEFAULT_PATH = join(
   homedir(),
   ".config",
-  "apple-search-ads-cli",
+  "apple-ads-cli",
   "credentials.json"
 );
 

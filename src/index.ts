@@ -13,14 +13,14 @@ import { registerReportCommands } from "./commands/report.js";
 const program = new Command();
 
 program
-  .name("apple-search-ads-cli")
-  .description("Apple Search Ads CLI for AI agents")
+  .name("apple-ads-cli")
+  .description("Apple Ads CLI for AI agents")
   .version("1.0.0")
   .option("--format <format>", "Output format", "json")
   .option("--credentials <path>", "Path to credentials JSON file")
   .addHelpText(
     "after",
-    "\nDocs: https://github.com/Bin-Huang/apple-search-ads-cli"
+    "\nDocs: https://github.com/Bin-Huang/apple-ads-cli"
   );
 
 program.configureOutput({

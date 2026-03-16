@@ -1,10 +1,10 @@
 {
-  "name": "apple-search-ads-cli",
+  "name": "apple-ads-cli",
   "version": "1.0.0",
   "description": "Apple Search Ads CLI for AI agents",
   "type": "module",
   "bin": {
-    "apple-search-ads-cli": "dist/index.js"
+    "apple-ads-cli": "dist/index.js"
   },
   "files": [
     "dist",
@@ -19,13 +19,13 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Bin-Huang/apple-search-ads-cli.git"
+    "url": "https://github.com/Bin-Huang/apple-ads-cli.git"
   },
   "engines": {
     "node": ">=18"
   },
   "keywords": [
-    "apple-search-ads",
+    "apple-ads",
     "ads",
     "cli",
     "ai-agent",

@@ -1,19 +1,19 @@
-# apple-search-ads-cli
+# apple-ads-cli
 
-An Apple Search Ads CLI designed for AI agents. Wraps the official Apple Ads Campaign Management API (v5) with simple, agent-friendly commands.
+An Apple Ads CLI designed for AI agents. Wraps the official Apple Ads Campaign Management API (v5) with simple, agent-friendly commands.
 
 **Works with:** OpenClaw, Claude Code, Cursor, Codex, and any agent that can run shell commands.
 
 ## Installation
 
 ```bash
-npm install -g apple-search-ads-cli
+npm install -g apple-ads-cli
 ```
 
 Or run directly with npx:
 
 ```bash
-npx apple-search-ads-cli --help
+npx apple-ads-cli --help
 ```
 
 ## How it works
@@ -89,8 +89,8 @@ Choose one of these options:
 
 ```bash
 # Option A: Default path (recommended)
-mkdir -p ~/.config/apple-search-ads-cli
-cat > ~/.config/apple-search-ads-cli/credentials.json << EOF
+mkdir -p ~/.config/apple-ads-cli
+cat > ~/.config/apple-ads-cli/credentials.json << EOF
 {
   "access_token": "YOUR_ACCESS_TOKEN",
   "org_id": "YOUR_ORG_ID"
@@ -102,7 +102,7 @@ export APPLE_ADS_ACCESS_TOKEN=your_access_token
 export APPLE_ADS_ORG_ID=your_org_id
 
 # Option C: Pass per command
-apple-search-ads-cli --credentials /path/to/credentials.json campaigns
+apple-ads-cli --credentials /path/to/credentials.json campaigns
 ```
 
 Your `org_id` is the organization identifier shown in the Apple Search Ads UI. You can also retrieve it using the `acl` command after authenticating.
@@ -110,7 +110,7 @@ Your `org_id` is the organization identifier shown in the Apple Search Ads UI. Y
 Credentials are resolved in this order:
 1. `--credentials <path>` flag
 2. `APPLE_ADS_ACCESS_TOKEN` and `APPLE_ADS_ORG_ID` env vars
-3. `~/.config/apple-search-ads-cli/credentials.json` (auto-detected)
+3. `~/.config/apple-ads-cli/credentials.json` (auto-detected)
 
 ## Usage
 
@@ -121,8 +121,8 @@ All commands output pretty-printed JSON by default. Use `--format compact` for c
 Search for iOS apps to promote in a campaign.
 
 ```bash
-apple-search-ads-cli search-apps "my app name"
-apple-search-ads-cli search-apps "fitness" --return-own-apps --limit 10
+apple-ads-cli search-apps "my app name"
+apple-ads-cli search-apps "fitness" --return-own-apps --limit 10
 ```
 
 Options:
@@ -135,7 +135,7 @@ Options:
 Check if an app is eligible to promote in a campaign.
 
 ```bash
-apple-search-ads-cli app-eligibility 123456789
+apple-ads-cli app-eligibility 123456789
 ```
 
 ### app
@@ -143,7 +143,7 @@ apple-search-ads-cli app-eligibility 123456789
 Get app details by Adam ID.
 
 ```bash
-apple-search-ads-cli app 123456789
+apple-ads-cli app 123456789
 ```
 
 ### acl
@@ -151,7 +151,7 @@ apple-search-ads-cli app 123456789
 Get the user access control list for all organizations. Useful for finding your `orgId`.
 
 ```bash
-apple-search-ads-cli acl
+apple-ads-cli acl
 ```
 
 ### me
@@ -159,7 +159,7 @@ apple-search-ads-cli acl
 Get details of the authenticated API user (userId, parentOrgId).
 
 ```bash
-apple-search-ads-cli me
+apple-ads-cli me
 ```
 
 ### campaigns
@@ -167,8 +167,8 @@ apple-search-ads-cli me
 List all campaigns in the organization.
 
 ```bash
-apple-search-ads-cli campaigns
-apple-search-ads-cli campaigns --limit 50 --offset 0
+apple-ads-cli campaigns
+apple-ads-cli campaigns --limit 50 --offset 0
 ```
 
 Options:
@@ -180,7 +180,7 @@ Options:
 Get a specific campaign by ID.
 
 ```bash
-apple-search-ads-cli campaign 123456
+apple-ads-cli campaign 123456
 ```
 
 ### budget-orders
@@ -188,8 +188,8 @@ apple-search-ads-cli campaign 123456
 List all budget orders for the organization.
 
 ```bash
-apple-search-ads-cli budget-orders
-apple-search-ads-cli budget-orders --limit 50
+apple-ads-cli budget-orders
+apple-ads-cli budget-orders --limit 50
 ```
 
 Options:
@@ -201,7 +201,7 @@ Options:
 Get a specific budget order by ID.
 
 ```bash
-apple-search-ads-cli budget-order 789012
+apple-ads-cli budget-order 789012
 ```
 
 ### adgroups
@@ -209,8 +209,8 @@ apple-search-ads-cli budget-order 789012
 List ad groups for a campaign.
 
 ```bash
-apple-search-ads-cli adgroups 123456
-apple-search-ads-cli adgroups 123456 --limit 50
+apple-ads-cli adgroups 123456
+apple-ads-cli adgroups 123456 --limit 50
 ```
 
 Options:
@@ -222,8 +222,8 @@ Options:
 List ads for an ad group within a campaign.
 
 ```bash
-apple-search-ads-cli ads 123456 789012
-apple-search-ads-cli ads 123456 789012 --limit 50
+apple-ads-cli ads 123456 789012
+apple-ads-cli ads 123456 789012 --limit 50
 ```
 
 Options:
@@ -235,8 +235,8 @@ Options:
 List targeting keywords for an ad group within a campaign.
 
 ```bash
-apple-search-ads-cli keywords 123456 789012
-apple-search-ads-cli keywords 123456 789012 --limit 50
+apple-ads-cli keywords 123456 789012
+apple-ads-cli keywords 123456 789012 --limit 50
 ```
 
 Options:
@@ -248,7 +248,7 @@ Options:
 List negative keywords for an ad group.
 
 ```bash
-apple-search-ads-cli negative-keywords 123456 789012
+apple-ads-cli negative-keywords 123456 789012
 ```
 
 Options:
@@ -260,7 +260,7 @@ Options:
 List campaign-level negative keywords.
 
 ```bash
-apple-search-ads-cli campaign-negative-keywords 123456
+apple-ads-cli campaign-negative-keywords 123456
 ```
 
 Options:
@@ -272,13 +272,13 @@ Options:
 Get a campaign-level performance report.
 
 ```bash
-apple-search-ads-cli report 123456 \
+apple-ads-cli report 123456 \
   --start-date 2026-03-01 \
   --end-date 2026-03-15 \
   --granularity DAILY
 
 # With grouping
-apple-search-ads-cli report 123456 \
+apple-ads-cli report 123456 \
   --start-date 2026-03-01 \
   --end-date 2026-03-15 \
   --granularity DAILY \
@@ -297,7 +297,7 @@ Options:
 Get an ad group-level report for a campaign.
 
 ```bash
-apple-search-ads-cli report-adgroups 123456 \
+apple-ads-cli report-adgroups 123456 \
   --start-date 2026-03-01 \
   --end-date 2026-03-15
 ```
@@ -312,7 +312,7 @@ Options:
 Get a keyword-level report for a campaign.
 
 ```bash
-apple-search-ads-cli report-keywords 123456 \
+apple-ads-cli report-keywords 123456 \
   --start-date 2026-03-01 \
   --end-date 2026-03-15
 ```
