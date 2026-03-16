@@ -3,6 +3,7 @@ import { Command } from "commander";
 import { registerAclCommands } from "./commands/acl.js";
 import { registerCampaignCommands } from "./commands/campaigns.js";
 import { registerAdgroupCommands } from "./commands/adgroups.js";
+import { registerAdCommands } from "./commands/ads.js";
 import { registerKeywordCommands } from "./commands/keywords.js";
 import { registerReportCommands } from "./commands/report.js";
 
@@ -36,6 +37,7 @@ program.hook("preAction", () => {
 registerAclCommands(program);
 registerCampaignCommands(program);
 registerAdgroupCommands(program);
+registerAdCommands(program);
 registerKeywordCommands(program);
 registerReportCommands(program);
 
