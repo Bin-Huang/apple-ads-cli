@@ -1,7 +1,7 @@
 {
   "name": "apple-ads-cli",
   "version": "1.0.1",
-  "description": "Apple Search Ads CLI for AI agents",
+  "description": "Apple Ads CLI for AI agents",
   "type": "module",
   "bin": {
     "apple-ads-cli": "dist/index.js"
@@ -38,5 +38,9 @@
   },
   "dependencies": {
     "commander": "^14.0.3"
-  }
+  },
+  "bugs": {
+    "url": "https://github.com/Bin-Huang/apple-ads-cli/issues"
+  },
+  "homepage": "https://github.com/Bin-Huang/apple-ads-cli#readme"
 }
