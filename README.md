@@ -1,6 +1,6 @@
 # apple-ads-cli
 
-Give AI agents direct access to Apple Ads data. One command to query campaigns, keywords, creatives, and pull performance reports -- no SDK, no docs to read, no tokens wasted on boilerplate.
+Apple Ads CLI for AI agents (and humans). Manage App Store search ad campaigns, check app eligibility, analyze keyword bids, pull reports by device and demographics, and more.
 
 **Works with:** OpenClaw, Claude Code, Cursor, Codex, and any agent that can run shell commands.
 
