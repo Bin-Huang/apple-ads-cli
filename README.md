@@ -22,14 +22,14 @@ Built on the official [Apple Ads Campaign Management API v5](https://developer.a
 
 Core endpoints covered:
 
-- **[ACL / Me](https://developer.apple.com/documentation/apple_search_ads/calling_the_apple_search_ads_api)** -- user access control and identity
-- **[Campaigns](https://developer.apple.com/documentation/apple_search_ads/campaigns)** -- list and inspect campaigns
-- **[Ad Groups](https://developer.apple.com/documentation/apple_search_ads/campaigns)** -- list ad groups under a campaign
-- **[Ads](https://developer.apple.com/documentation/apple_search_ads/campaigns)** -- list ads under an ad group
-- **[Keywords](https://developer.apple.com/documentation/apple_search_ads/campaigns)** -- list targeting keywords and negative keywords
-- **[Budget Orders](https://developer.apple.com/documentation/apple_search_ads/campaigns)** -- list and inspect budget orders
-- **[Apps](https://developer.apple.com/documentation/apple_search_ads/campaigns)** -- search apps, check eligibility, get app details
-- **[Reports](https://developer.apple.com/documentation/apple_search_ads/reports)** -- campaign, ad group, and keyword level reports
+- **[ACL / Me](https://developer.apple.com/documentation/apple_ads/calling-the-apple-search-ads-api)** -- user access control and identity
+- **[Campaigns](https://developer.apple.com/documentation/apple_ads/campaigns)** -- list and inspect campaigns
+- **[Ad Groups](https://developer.apple.com/documentation/apple_ads/campaigns)** -- list ad groups under a campaign
+- **[Ads](https://developer.apple.com/documentation/apple_ads/campaigns)** -- list ads under an ad group
+- **[Keywords](https://developer.apple.com/documentation/apple_ads/campaigns)** -- list targeting keywords and negative keywords
+- **[Budget Orders](https://developer.apple.com/documentation/apple_ads/campaigns)** -- list and inspect budget orders
+- **[Apps](https://developer.apple.com/documentation/apple_ads/campaigns)** -- search apps, check eligibility, get app details
+- **[Reports](https://developer.apple.com/documentation/apple_ads/reports)** -- campaign, ad group, and keyword level reports
 
 ## Setup
 
@@ -81,7 +81,7 @@ curl -X POST https://appleid.apple.com/auth/oauth2/token \
   -d "grant_type=client_credentials&client_id=YOUR_CLIENT_ID&client_secret=YOUR_JWT&scope=searchadsorg"
 ```
 
-The response contains an `access_token` (valid for 1 hour). For the full process including a Python example, see [Apple's OAuth guide](https://developer.apple.com/documentation/apple_search_ads/implementing_oauth_for_the_apple_search_ads_api).
+The response contains an `access_token` (valid for 1 hour). For the full process including a Python example, see [Apple's OAuth guide](https://developer.apple.com/documentation/apple_ads/implementing-oauth-for-the-apple-search-ads-api).
 
 ### Step 4: Place the credentials file
 
@@ -332,9 +332,9 @@ Errors are written to stderr as JSON with an `error` field and a non-zero exit c
 
 ## API Reference
 
-- Official docs: https://developer.apple.com/documentation/apple_search_ads
-- OAuth setup: https://developer.apple.com/documentation/apple_search_ads/implementing_oauth_for_the_apple_search_ads_api
-- API changelog: https://developer.apple.com/documentation/apple_search_ads/apple_search_ads_campaign_management_api_5
+- Official docs: https://developer.apple.com/documentation/apple_ads
+- OAuth setup: https://developer.apple.com/documentation/apple_ads/implementing-oauth-for-the-apple-search-ads-api
+- API changelog: https://developer.apple.com/documentation/apple_ads/apple-search-ads-campaign-management-api-5
 
 ## Related
 
