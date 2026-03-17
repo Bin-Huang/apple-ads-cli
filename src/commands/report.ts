@@ -20,12 +20,19 @@ export function registerReportCommands(program: Command): void {
           endTime: opts.endDate,
           granularity: opts.granularity,
           returnRecordsWithNoMetrics: opts.returnRecordsWithNoMetrics ?? false,
+          selector: {
+            conditions: [{ field: "campaignId", operator: "EQUALS", values: [campaignId] }],
+            pagination: { offset: 0, limit: 1000 },
+          },
+          returnRowTotals: true,
+          returnGrandTotals: true,
+          timeZone: "UTC",
         };
         if (opts.groupBy) {
           body.groupBy = opts.groupBy.split(",").map((s: string) => s.trim());
         }
         const data = await callApi(
-          `/reports/campaigns/${campaignId}`,
+          `/reports/campaigns`,
           { creds, method: "POST", body }
         );
         output(data, program.opts().format);
@@ -47,6 +54,12 @@ export function registerReportCommands(program: Command): void {
           startTime: opts.startDate,
           endTime: opts.endDate,
           granularity: opts.granularity,
+          selector: {
+            pagination: { offset: 0, limit: 1000 },
+          },
+          returnRowTotals: true,
+          returnGrandTotals: true,
+          timeZone: "UTC",
         };
         const data = await callApi(
           `/reports/campaigns/${campaignId}/adgroups`,
@@ -71,6 +84,12 @@ export function registerReportCommands(program: Command): void {
           startTime: opts.startDate,
           endTime: opts.endDate,
           granularity: opts.granularity,
+          selector: {
+            pagination: { offset: 0, limit: 1000 },
+          },
+          returnRowTotals: true,
+          returnGrandTotals: true,
+          timeZone: "UTC",
         };
         const data = await callApi(
           `/reports/campaigns/${campaignId}/keywords`,
