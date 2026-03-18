@@ -10,11 +10,7 @@ Apple Ads CLI for AI agents (and humans). Manage App Store search ad campaigns, 
 npm install -g apple-ads-cli
 ```
 
-Or run directly with npx:
-
-```bash
-npx apple-ads-cli --help
-```
+Or run directly: `npx apple-ads-cli --help`
 
 ## How it works
 
