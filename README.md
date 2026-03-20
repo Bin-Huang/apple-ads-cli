@@ -6,8 +6,17 @@ Apple Ads CLI for AI agents (and humans). Manage App Store search ad campaigns, 
 
 ## Installation
 
+Tell your AI agent (e.g. OpenClaw):
+
+> Install the CLI and skills from https://github.com/Bin-Huang/apple-ads-cli
+
+Or install manually:
+
 ```bash
 npm install -g apple-ads-cli
+
+# Add skills for AI agents (Claude Code, Cursor, Codex, etc.)
+npx skills add Bin-Huang/apple-ads-cli
 ```
 
 Or run directly: `npx apple-ads-cli --help`
