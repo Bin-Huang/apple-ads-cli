@@ -8,7 +8,7 @@ Apple Ads CLI for AI agents (and humans). Manage App Store search ad campaigns, 
 
 Tell your AI agent (e.g. OpenClaw):
 
-> Install the CLI and skills from https://github.com/Bin-Huang/apple-ads-cli
+> Install this CLI and skills from https://github.com/Bin-Huang/apple-ads-cli
 
 Or install manually:
 
