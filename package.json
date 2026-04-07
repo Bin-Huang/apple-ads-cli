@@ -1,7 +1,7 @@
 {
   "name": "apple-ads-cli",
   "version": "1.0.4",
-  "description": "Apple Ads CLI for AI agents",
+  "description": "Apple Ads CLI & Skills for AI agents",
   "type": "module",
   "bin": {
     "apple-ads-cli": "dist/index.js"
