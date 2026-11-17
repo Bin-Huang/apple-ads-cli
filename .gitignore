@@ -1,4 +1,10 @@
 node_modules/
 dist/
+build-test/
+package-lock.json
 .env
 credentials*.json
+config.json
+*.pem
+*.p8
+skills/*/references/local.md

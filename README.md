@@ -1,10 +1,16 @@
 # apple-ads-cli
 
-Apple Ads CLI & Skills for AI agents (and humans). Manage App Store search ad campaigns, check app eligibility, analyze keyword bids, pull reports by device and demographics, and more.
+Apple Ads CLI & Skills for AI agents (and humans). Manage App Store search ad campaigns, keywords and negative keywords, check app eligibility, and pull reports by device, country and demographics. Built on the [Apple Ads Platform API v1](https://developer.apple.com/documentation/apple-ads-platform-api).
+
+It reads accounts, campaigns, ad groups, keywords, negative keywords, creatives, ads, product pages and reports, and it changes them through a dry-run and confirm protocol. Output is JSON on stdout, so scripts and AI agents can parse it directly.
 
 **Works with:** OpenClaw, Claude Code, Cursor, Codex, and any agent that can run shell commands.
 
-## Installation
+> **Version 2.0 is a rewrite.** Version 1.x used Apple's Campaign Management API v5, which Apple shuts down on **26 January 2027**. Most command names and flags changed, and so did the shape of the JSON output. See [Migrating from 1.x](#migrating-from-1x).
+
+## Install
+
+Requires Node.js 22 or later.
 
 Tell your AI agent (e.g. OpenClaw):
 
@@ -13,333 +19,280 @@ Tell your AI agent (e.g. OpenClaw):
 Or install manually:
 
 ```bash
-npm install -g apple-ads-cli
+npm install -g apple-ads-cli        # or: pnpm add -g apple-ads-cli
 
-# Add skills for AI agents (Claude Code, Cursor, Codex, etc.)
+# Add the skill for AI agents (Claude Code, Cursor, Codex, etc.)
 npx skills add Bin-Huang/apple-ads-cli
 ```
 
 Or run directly: `npx apple-ads-cli --help`
 
-## How it works
-
-Built on the official [Apple Ads Campaign Management API v5](https://developer.apple.com/documentation/apple_ads). Handles JWT-based OAuth2 authentication and the `X-AP-Context` organization header. Every command outputs structured JSON to stdout, ready for agents to parse without extra processing.
-
-Core endpoints covered:
-
-- **[ACL / Me](https://developer.apple.com/documentation/apple_ads/calling-the-apple-search-ads-api)** -- user access control and identity
-- **[Campaigns](https://developer.apple.com/documentation/apple_ads/campaigns)** -- list and inspect campaigns
-- **[Ad Groups](https://developer.apple.com/documentation/apple_ads/campaigns)** -- list ad groups under a campaign
-- **[Ads](https://developer.apple.com/documentation/apple_ads/campaigns)** -- list ads under an ad group
-- **[Keywords](https://developer.apple.com/documentation/apple_ads/campaigns)** -- list targeting keywords and negative keywords
-- **[Budget Orders](https://developer.apple.com/documentation/apple_ads/campaigns)** -- list and inspect budget orders
-- **[Apps](https://developer.apple.com/documentation/apple_ads/campaigns)** -- search apps, check eligibility, get app details
-- **[Reports](https://developer.apple.com/documentation/apple_ads/reports)** -- campaign, ad group, and keyword level reports
-
-## Setup
-
-### Step 1: Get API access
-
-1. Sign in to [Apple Search Ads](https://searchads.apple.com/) with an account that has Admin or API permissions.
-2. Go to **Account Settings > API** to manage your API credentials.
-
-### Step 2: Generate a key pair and upload the public key
-
-Generate an ECDSA key pair:
+From source:
 
 ```bash
-# Generate private key
-openssl ecparam -genkey -name prime256v1 -noout -out private-key.pem
-
-# Extract public key
-openssl ec -in private-key.pem -pubout -out public-key.pem
+git clone https://github.com/Bin-Huang/apple-ads-cli.git
+cd apple-ads-cli
+pnpm install        # or: npm install
+pnpm build          # or: npm run build
+pnpm test           # or: npm test (no network)
+node dist/index.js --version
 ```
 
-Upload the contents of `public-key.pem` in **Account Settings > API**. After uploading, Apple provides your `clientId`, `teamId`, and `keyId`.
+From a clone, add the agent skill by copying `skills/apple-ads-cli/` into your agent's skills folder (for Claude Code, `~/.claude/skills/`).
 
-### Step 3: Create a client secret and get an access token
+## Set up
 
-A client secret is a JWT signed with your private key. The JWT header and payload:
+1. Create a key pair:
 
-```json
-// Header
-{
-  "alg": "ES256",
-  "kid": "YOUR_KEY_ID"
-}
+   ```bash
+   mkdir -p ~/.config/apple-ads-cli && cd ~/.config/apple-ads-cli
+   openssl ecparam -genkey -name prime256v1 -noout -out private-key.pem
+   openssl ec -in private-key.pem -pubout -out public-key.pem
+   chmod 600 private-key.pem
+   ```
 
-// Payload
-{
-  "sub": "YOUR_CLIENT_ID",
-  "aud": "https://appleid.apple.com",
-  "iat": 1234567890,
-  "exp": 1234654290,
-  "iss": "YOUR_TEAM_ID"
-}
-```
+2. In [Apple Ads](https://ads.apple.com/app-store/), open **Account Settings > API**, upload `public-key.pem`, and copy the client ID, team ID and key ID. The API user needs a role such as API Campaign Manager (to change campaigns) or API Read Only.
 
-Sign the JWT with your private key (ES256 algorithm), then exchange it for an access token:
+3. Save a profile. The CLI stores the key's **path**, never its contents:
+
+   ```bash
+   apple-ads-cli auth setup \
+     --client-id SEARCHADS.00000000-0000-0000-0000-000000000000 \
+     --team-id SEARCHADS.00000000-0000-0000-0000-000000000000 \
+     --key-id 00000000-0000-0000-0000-000000000000 \
+     --private-key ~/.config/apple-ads-cli/private-key.pem
+   ```
+
+   `auth setup` gets a token, lists the ad accounts the key can use, and saves the ad account when there is only one. With several, add `--ad-account-id 123456789`.
+
+4. Check the setup:
+
+   ```bash
+   apple-ads-cli auth doctor
+   ```
+
+### How credentials work
+
+- The CLI signs a short-lived ES256 client secret with `node:crypto` and exchanges it at `https://appleid.apple.com/auth/oauth2/token` for a one-hour access token.
+- The token is cached in `~/.cache/apple-ads-cli/tokens/` (mode 600) and refreshed 60 seconds before it expires, or after a 401.
+- The config is `~/.config/apple-ads-cli/config.json` (mode 600). The CLI refuses a config that group or others can read.
+- Each setting resolves in this order: flag, then environment variable, then the config profile. `auth status` shows where each value came from.
+
+| Environment variable | Setting |
+|---|---|
+| `APPLE_ADS_PROFILE` | Profile name |
+| `APPLE_ADS_CONFIG` | Config file path |
+| `APPLE_ADS_CLIENT_ID`, `APPLE_ADS_TEAM_ID`, `APPLE_ADS_KEY_ID` | Credentials |
+| `APPLE_ADS_PRIVATE_KEY_PATH` | Path to the private key (a path only: key contents are refused, exit 3 `KEY_IS_CONTENT`) |
+| `APPLE_ADS_AD_ACCOUNT_ID` | Ad account (sent as `X-AP-Context: adAccountId=…`) |
+| `APPLE_ADS_PROTECTED_CAMPAIGN_IDS` | Extra protected campaigns, comma-separated (added to the config list) |
+| `APPLE_ADS_MAX_BID`, `APPLE_ADS_MAX_DAILY_BUDGET` | Sanity ceilings (profile keys `maxBid`, `maxDailyBudget`; defaults 10.00 and 1000.00) |
+| `APPLE_ADS_ACCESS_TOKEN` | A ready-made token, used as given with no refresh |
+
+## Commands
+
+Commands follow `apple-ads-cli <noun> <verb>`. Every command's `--help` shows its endpoint, examples and exit codes, and `apple-ads-cli schema commands` prints the whole tree as JSON.
+
+**Global flags:** `--profile`, `--ad-account-id`, `--output json|table`, `--pretty`, `--debug` (requests on stderr, secrets redacted), `--config`, `--timeout <seconds>`.
+
+**List flags:** `--limit`, `--all`, `--max-items`, `--offset`, `--sort field[:ASC|DESC]`, `--filter field:OPERATOR[:v1,v2]`, and on entity lists `--fields a,b` and `--deleted`. Every list reports `pagination.truncated`, so results are never cut off silently.
+
+**Write flags:** `--dry-run`, `--confirm`, `--data <json>` or `--file <path>` (merged under the flags), and `--force-delete` for deletes.
+
+### Account and setup
 
 ```bash
-curl -X POST https://appleid.apple.com/auth/oauth2/token \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "grant_type=client_credentials&client_id=YOUR_CLIENT_ID&client_secret=YOUR_JWT&scope=searchadsorg"
-```
-
-The response contains an `access_token` (valid for 1 hour). For the full process including a Python example, see [Apple's OAuth guide](https://developer.apple.com/documentation/apple_ads/implementing-oauth-for-the-apple-search-ads-api).
-
-### Step 4: Place the credentials file
-
-Choose one of these options:
-
-```bash
-# Option A: Default path (recommended)
-mkdir -p ~/.config/apple-ads-cli
-cat > ~/.config/apple-ads-cli/credentials.json << EOF
-{
-  "access_token": "YOUR_ACCESS_TOKEN",
-  "org_id": "YOUR_ORG_ID"
-}
-EOF
-
-# Option B: Environment variables
-export APPLE_ADS_ACCESS_TOKEN=your_access_token
-export APPLE_ADS_ORG_ID=your_org_id
-
-# Option C: Pass per command
-apple-ads-cli --credentials /path/to/credentials.json campaigns
-```
-
-Your `org_id` is the organization identifier shown in the Apple Search Ads UI. You can also retrieve it using the `acl` command after authenticating.
-
-Credentials are resolved in this order:
-1. `--credentials <path>` flag
-2. `APPLE_ADS_ACCESS_TOKEN` and `APPLE_ADS_ORG_ID` env vars
-3. `~/.config/apple-ads-cli/credentials.json` (auto-detected)
-
-## Usage
-
-All commands output pretty-printed JSON by default. Use `--format compact` for compact single-line JSON.
-
-### search-apps
-
-Search for iOS apps to promote in a campaign.
-
-```bash
-apple-ads-cli search-apps "my app name"
-apple-ads-cli search-apps "fitness" --return-own-apps --limit 10
-```
-
-Options:
-- `--return-own-apps` -- only return apps owned by the organization
-- `--limit <n>` -- number of results (default 20)
-- `--offset <n>` -- pagination offset (default 0)
-
-### app-eligibility
-
-Check if an app is eligible to promote in a campaign.
-
-```bash
-apple-ads-cli app-eligibility 123456789
-```
-
-### app
-
-Get app details by Adam ID.
-
-```bash
-apple-ads-cli app 123456789
-```
-
-### acl
-
-Get the user access control list for all organizations. Useful for finding your `orgId`.
-
-```bash
-apple-ads-cli acl
-```
-
-### me
-
-Get details of the authenticated API user (userId, parentOrgId).
-
-```bash
+apple-ads-cli auth setup --client-id … --team-id … --key-id … --private-key <path>
+apple-ads-cli auth status            # offline: profile, sources, key and token cache state
+apple-ads-cli auth doctor            # 10 read-only checks; exit 3 if one fails
+apple-ads-cli auth logout [--all]    # delete cached tokens
 apple-ads-cli me
+apple-ads-cli access                 # ad accounts and roles
+apple-ads-cli accounts get [123456789]
+apple-ads-cli orgs get 987654321
 ```
 
-### campaigns
-
-List all campaigns in the organization.
+### Apps, product pages and geo
 
 ```bash
-apple-ads-cli campaigns
-apple-ads-cli campaigns --limit 50 --offset 0
+apple-ads-cli apps search --owned
+apple-ads-cli apps search --query "example app" --storefront US
+apple-ads-cli apps get 1234567890
+apple-ads-cli apps eligibility 1234567890 --country US
+apple-ads-cli apps locales 1234567890
+apple-ads-cli product-pages list --adam-id 1234567890 --state VISIBLE
+apple-ads-cli product-pages get 00000000-0000-0000-0000-000000000000
+apple-ads-cli geo search --query "united" --entity Country
 ```
 
-Options:
-- `--limit <n>` -- number of results (default 20)
-- `--offset <n>` -- pagination offset (default 0)
-
-### campaign
-
-Get a specific campaign by ID.
+### Campaigns, ad groups and ads
 
 ```bash
-apple-ads-cli campaign 123456
+apple-ads-cli campaigns list [--status ENABLED] [--name text]   # --name: substring, any case
+apple-ads-cli campaigns get 111111111
+apple-ads-cli campaigns create --name "Example US Search" --adam-id 1234567890 \
+  --daily-budget 5.00 --countries US --end 2027-01-31 --dry-run
+apple-ads-cli campaigns update 111111111 --daily-budget 6.00 --dry-run
+apple-ads-cli campaigns pause 111111111 --confirm
+apple-ads-cli campaigns resume 111111111 --confirm
+apple-ads-cli campaigns delete 111111111 --confirm --force-delete
+
+apple-ads-cli ad-groups list --campaign-id 111111111
+apple-ads-cli ad-groups get 222222222
+apple-ads-cli ad-groups create --campaign-id 111111111 --name "Example Group" --bid 0.60 --dry-run
+apple-ads-cli ad-groups update 222222222 --bid 0.70 --search-match off --dry-run
+apple-ads-cli ad-groups pause|resume 222222222 --confirm
+apple-ads-cli ad-groups delete 222222222 --confirm --force-delete
+
+apple-ads-cli creatives list [--status VALID]
+apple-ads-cli creatives get 666666
+apple-ads-cli creatives create --name "Example CPP" --adam-id 1234567890 \
+  --product-page-id 00000000-0000-0000-0000-000000000000 --dry-run
+apple-ads-cli creatives delete 666666 --confirm --force-delete
+
+apple-ads-cli ads list --campaign-id 111111111
+apple-ads-cli ads get 555555555
+apple-ads-cli ads create --ad-group-id 222222222 --creative-id 666666 --name "Example Ad" --dry-run
+apple-ads-cli ads update 555555555 --name "Example Ad 2" --dry-run
+apple-ads-cli ads pause|resume 555555555 --confirm
+apple-ads-cli ads delete 555555555 --confirm --force-delete
+
+apple-ads-cli budget-orders list
+apple-ads-cli budget-orders get 777777777
 ```
 
-### budget-orders
-
-List all budget orders for the organization.
+### Keywords and negative keywords
 
 ```bash
-apple-ads-cli budget-orders
-apple-ads-cli budget-orders --limit 50
+apple-ads-cli keywords list --campaign-id 111111111      # or --ad-group-id
+apple-ads-cli keywords get 333333333
+apple-ads-cli keywords add --ad-group-id 222222222 --text "example term" --text "other term" --dry-run
+apple-ads-cli keywords add --ad-group-id 222222222 --file keywords.csv --bid 0.50 --confirm
+apple-ads-cli keywords update 333333333 --bid 0.55 --dry-run
+apple-ads-cli keywords update --file updates.json --confirm      # [{"id":…, "bid":"0.55"}]
+apple-ads-cli keywords pause|resume 333333333 --confirm
+apple-ads-cli keywords delete 333333333 --confirm --force-delete
+
+apple-ads-cli negatives list --campaign-id 111111111 [--campaign-level]
+apple-ads-cli negatives list --ad-group-id 222222222
+apple-ads-cli negatives add --campaign-id 111111111 --text "free example" --dry-run
+apple-ads-cli negatives pause|resume 444444444 --confirm
+apple-ads-cli negatives delete 444444444 --confirm --force-delete
 ```
 
-Options:
-- `--limit <n>` -- number of results (default 20)
-- `--offset <n>` -- pagination offset (default 0)
+Keyword files are a JSON array (strings or `{text, matchType?, bid?}`) or CSV (`text[,matchType[,bid]]`). Bulk requests go in chunks of 100 with partial success allowed. Keywords and negatives that already exist are skipped and listed under `existing`.
 
-### budget-order
-
-Get a specific budget order by ID.
+### Reports, insights and history
 
 ```bash
-apple-ads-cli budget-order 789012
+apple-ads-cli reports campaigns --last 7d
+apple-ads-cli reports campaigns --campaign-id 111111111 --start 2026-11-01 --end 2026-11-14 --granularity DAILY
+apple-ads-cli reports ad-groups --campaign-id 111111111 --last 28d --group-by countryOrRegion
+apple-ads-cli reports keywords --campaign-id 111111111 --last 28d --output table
+apple-ads-cli reports search-terms --campaign-id 111111111 --last 28d
+apple-ads-cli reports ads --campaign-id 111111111 --start yesterday --end yesterday
+
+apple-ads-cli insights impression-share --adam-id 1234567890 --country US --last 14d
+apple-ads-cli insights keyword-suggestions --adam-id 1234567890 --country US
+
+apple-ads-cli history list --since 7d --campaign-id 111111111
+apple-ads-cli history get Campaign.111111111.TXN_ID
 ```
 
-### adgroups
+Report rules the CLI checks before sending:
 
-List ad groups for a campaign.
+- `--last Nd` is the N full days before today in the ad account's time zone. Today is excluded. The default is `--last 7d`.
+- Without `--granularity`, a report returns totals for the range.
+- Dates are in the ad account's time zone (`ORTZ`). Pass `--time-zone UTC` for UTC.
+- `--group-by` takes `deviceClass`, `ageRange`, `gender`, `countryCode`, `adminArea`, `locality` or `countryOrRegion` on campaign and ad group reports, `deviceClass` or `countryOrRegion` on keyword and search term reports, and `countryOrRegion` on ad reports.
+- Campaign reports filter on campaign `id`. The other reports need `--campaign-id`.
+- Spans: HOURLY up to 7 days, DAILY up to 90, WEEKLY 14 or more, MONTHLY 90 or more. No HOURLY for ads or search terms, and search terms are ORTZ only.
+- An empty result becomes `rows: []`, missing requested counts become 0, and Apple's placeholder "Default Ad" rows are dropped (counted in `pagination.droppedDefaultAds`) unless you pass `--include-default-ads`.
+- `history list --end` is inclusive.
+
+### Discovery and raw requests
 
 ```bash
-apple-ads-cli adgroups 123456
-apple-ads-cli adgroups 123456 --limit 50
+apple-ads-cli schema                        # topics
+apple-ads-cli schema filters keywords       # filterable fields and operators
+apple-ads-cli schema reports                # metrics, groupBy, span rules
+apple-ads-cli schema enums campaigndisplaystatus
+apple-ads-cli schema exit-codes
+
+apple-ads-cli api GET /campaigns/111111111
+apple-ads-cli api POST /campaigns/query --data '{"pagination":{"offset":0,"pageSize":10}}'
+apple-ads-cli api PUT /adgroups/222222222 --data '{"name":"Example"}' --dry-run
 ```
 
-Options:
-- `--limit <n>` -- number of results (default 20)
-- `--offset <n>` -- pagination offset (default 0)
+`api` runs GET and `…/query` requests directly, judged by the URL that is actually sent. Any other request is a write and follows the safety model below. Paths with `#`, `%`, `\` or `.`/`..` segments are refused, and GET takes no body.
 
-### ads
+## Safety model
 
-List ads for an ad group within a campaign.
+- **Read-only by default.** Nothing changes without `--confirm`. Without it, the command prints the plan and exits 6.
+- **`--dry-run`** prints the exact method, URL, `X-AP-Context` value and JSON body, then exits 0 without sending.
+- **The plan shows the spend effect.** `spend.effect` is `increase`, `decrease`, `none` or `unknown`, with reasons. Bid changes over 15% and budget changes over 20% are flagged `largeStep`. Campaign plans include Apple's ceilings: monthly spend can reach the daily budget × 30.4, and a scheduled campaign can spend up to days × daily budget.
+- **Sanity ceilings.** A bid above `maxBid` (default 10.00) or a daily budget above `maxDailyBudget` (default 1000.00), in the account currency, exits 6 `ABOVE_CEILING` unless you pass `--allow-large`. Set both in the profile for currencies with larger units, such as JPY.
+- **Safe defaults.** New campaigns, ad groups and ads are created PAUSED. New negatives default to EXACT match. Deletes also need `--force-delete`.
+- **Protected campaigns.** Add campaign IDs to `protectedCampaignIds` in a profile (or `auth setup --protect <id>`). Any write to such a campaign, or to anything under it (including a creative used by one of its ads), exits 6 before it is sent. Set `allowPauseProtected: true` to let pauses and new negatives through.
+- **Verification.** After sending, the CLI reads the entities again and prints `after`, with `status`, `systemStatus`, `displayStatus` and the changed bid or budget. A bulk write that Apple does not confirm item by item exits 1 `BULK_UNCONFIRMED`.
+- **Secrets.** Tokens, the client secret and the key never appear in output or `--debug` logs.
 
-```bash
-apple-ads-cli ads 123456 789012
-apple-ads-cli ads 123456 789012 --limit 50
-```
+## Exit codes
 
-Options:
-- `--limit <n>` -- number of results (default 20)
-- `--offset <n>` -- pagination offset (default 0)
+| Code | Meaning |
+|---|---|
+| 0 | OK, including `--dry-run` |
+| 1 | API or runtime error, or a partial bulk failure |
+| 2 | Usage error or local validation failure |
+| 3 | Auth or config error |
+| 4 | Not found |
+| 5 | Rate limited or transient (retries ran out) |
+| 6 | Refused for safety: `CONFIRM_REQUIRED`, `PROTECTED`, `FORCE_DELETE_REQUIRED` or `ABOVE_CEILING` |
 
-### keywords
+Errors print to stderr as `{"error":{"code","message","hint","status","requestId","details"}}`.
 
-List targeting keywords for an ad group within a campaign.
+Reads retry on 429 and 5xx with backoff up to 16 seconds and honour `Retry-After`. Writes retry only on 429, plus once after a token refresh on 401.
 
-```bash
-apple-ads-cli keywords 123456 789012
-apple-ads-cli keywords 123456 789012 --limit 50
-```
+## Migrating from 1.x
 
-Options:
-- `--limit <n>` -- number of results (default 20)
-- `--offset <n>` -- pagination offset (default 0)
+Version 1.x used the Campaign Management API v5 with a pre-made access token and an org ID. Version 2.0 uses the Platform API v1, signs in with your key, and uses the ad account ID. The same API key works for both, and campaign IDs carry over.
 
-### negative-keywords
+| 1.x | 2.0 |
+|---|---|
+| `credentials.json` with an access token | `auth setup` with the key path |
+| `--credentials <file>` | `--config <file>` or `--profile <name>`. The config file has a new format, written by `auth setup` |
+| `APPLE_ADS_ACCESS_TOKEN` and `APPLE_ADS_ORG_ID` | `APPLE_ADS_ACCESS_TOKEN` still works, with `APPLE_ADS_AD_ACCOUNT_ID`. It is used before the key sign-in and is not refreshed, so unset it after `auth setup` |
+| org ID | ad account ID (`--ad-account-id`). `access` lists both |
+| `acl` | `access` |
+| `me` | `me` (unchanged) |
+| `campaigns` / `campaign <id>` | `campaigns list` / `campaigns get <id>` |
+| `adgroups <campaignId>` | `ad-groups list --campaign-id <id>` |
+| `ads <campaignId> <adGroupId>` | `ads list --ad-group-id <id>` |
+| `keywords <campaignId> <adGroupId>` | `keywords list --ad-group-id <id>` |
+| `campaign-negative-keywords <campaignId>` | `negatives list --campaign-id <id> --campaign-level` |
+| `negative-keywords <campaignId> <adGroupId>` | `negatives list --ad-group-id <id>` |
+| `search-apps <query>` / `app-eligibility <adamId>` / `app <adamId>` | `apps search --query <q>` / `apps eligibility <adamId>` / `apps get <adamId>` |
+| `search-apps --return-own-apps` | `apps search --owned` |
+| `budget-orders` / `budget-order <id>` | `budget-orders list` / `budget-orders get <id>` |
+| `report <campaignId>` | `reports campaigns --campaign-id <id>` |
+| `report-adgroups <campaignId>` | `reports ad-groups --campaign-id <id>` |
+| `report-keywords <campaignId>` | `reports keywords --campaign-id <id>` |
+| `--start-date` / `--end-date` (required) | `--start` / `--end`, or `--last Nd`. The default is the last 7 days |
+| reports default to `--granularity DAILY` | totals unless you pass `--granularity` |
+| report dates in UTC | the ad account's time zone. Pass `--time-zone UTC` for the 1.x behaviour |
+| `--return-records-with-no-metrics` | `--include-empty` (not with `--group-by`) |
+| `--limit` defaults to 20 | `--limit` defaults to 1000 (5000 on reports). `--all` follows every page |
+| `--format json` / `--format compact` | removed. Output is compact when piped and indented in a terminal. `--pretty` indents |
+| output is Apple's `data` value | `{"result": …, "pagination": …}`. Report rows are in `result.rows` |
+| errors are `{"error": "message"}` with exit 1 | `{"error": {"code", "message", "hint", …}}` with [exit codes](#exit-codes) 1 to 6 |
 
-List negative keywords for an ad group.
+See [CHANGELOG.md](CHANGELOG.md) for details.
 
-```bash
-apple-ads-cli negative-keywords 123456 789012
-```
+## API version
 
-Options:
-- `--limit <n>` -- number of results (default 20)
-- `--offset <n>` -- pagination offset (default 0)
-
-### campaign-negative-keywords
-
-List campaign-level negative keywords.
-
-```bash
-apple-ads-cli campaign-negative-keywords 123456
-```
-
-Options:
-- `--limit <n>` -- number of results (default 20)
-- `--offset <n>` -- pagination offset (default 0)
-
-### report
-
-Get a campaign-level performance report.
-
-```bash
-apple-ads-cli report 123456 \
-  --start-date 2026-03-01 \
-  --end-date 2026-03-15 \
-  --granularity DAILY
-
-# With grouping
-apple-ads-cli report 123456 \
-  --start-date 2026-03-01 \
-  --end-date 2026-03-15 \
-  --granularity DAILY \
-  --group-by countryOrRegion,deviceClass
-```
-
-Options:
-- `--start-date <date>` -- start date, YYYY-MM-DD (required)
-- `--end-date <date>` -- end date, YYYY-MM-DD (required)
-- `--granularity <gran>` -- HOURLY, DAILY, WEEKLY, MONTHLY (default DAILY)
-- `--group-by <fields>` -- group by fields, comma-separated (e.g. countryOrRegion, deviceClass, ageRange, gender)
-- `--return-records-with-no-metrics` -- include records with no metrics
-
-### report-adgroups
-
-Get an ad group-level report for a campaign.
-
-```bash
-apple-ads-cli report-adgroups 123456 \
-  --start-date 2026-03-01 \
-  --end-date 2026-03-15
-```
-
-Options:
-- `--start-date <date>` -- start date, YYYY-MM-DD (required)
-- `--end-date <date>` -- end date, YYYY-MM-DD (required)
-- `--granularity <gran>` -- HOURLY, DAILY, WEEKLY, MONTHLY (default DAILY)
-
-### report-keywords
-
-Get a keyword-level report for a campaign.
-
-```bash
-apple-ads-cli report-keywords 123456 \
-  --start-date 2026-03-01 \
-  --end-date 2026-03-15
-```
-
-Options:
-- `--start-date <date>` -- start date, YYYY-MM-DD (required)
-- `--end-date <date>` -- end date, YYYY-MM-DD (required)
-- `--granularity <gran>` -- HOURLY, DAILY, WEEKLY, MONTHLY (default DAILY)
-
-## Error output
-
-Errors are written to stderr as JSON with an `error` field and a non-zero exit code:
-
-```json
-{"error": "unauthorized"}
-```
-
-## API Reference
-
-- Official docs: https://developer.apple.com/documentation/apple_ads
-- OAuth setup: https://developer.apple.com/documentation/apple_ads/implementing-oauth-for-the-apple-search-ads-api
-- API changelog: https://developer.apple.com/documentation/apple_ads/apple-search-ads-campaign-management-api-5
+- API: Apple Ads Platform API v1, `https://api.ads.apple.com/v1`.
+- The Campaign Management API v5 that 1.x used is sunset on 26 January 2027.
+- Apple docs: [Platform API](https://developer.apple.com/documentation/apple-ads-platform-api), [OAuth](https://developer.apple.com/documentation/apple-ads-platform-api/implementing-oauth-for-the-apple-ads-platform-api), [rate limits](https://developer.apple.com/documentation/apple-ads-platform-api/rate-limits).
 
 ## Related
 
@@ -359,6 +312,7 @@ Errors are written to stderr as JSON with an `error` field and a non-zero exit c
 - [youtube-analytics-cli](https://github.com/Bin-Huang/youtube-analytics-cli) -- YouTube Analytics CLI & Skills for AI agents (and humans)
 - [x-analytics-cli](https://github.com/Bin-Huang/x-analytics-cli) -- X Analytics CLI & Skills for AI agents (and humans)
 - [camoufox-cli](https://github.com/Bin-Huang/camoufox-cli) -- Anti-detect browser CLI & Skills for AI agents
+
 ## License
 
-Apache-2.0
+Apache-2.0. See [LICENSE](LICENSE).

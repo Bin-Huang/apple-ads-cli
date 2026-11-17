@@ -1,288 +1,117 @@
 ---
 name: apple-ads-cli
-description: >
-  Apple Search Ads data analysis and reporting via apple-ads-cli.
-  Use when the user wants to check Apple Search Ads performance, pull campaign/ad group/keyword stats,
-  explore account structure, inspect ads and keywords, analyze budget orders, or check app eligibility.
-  Triggers: "Apple Ads", "Apple Search Ads", "App Store ads", "apple ad performance", "apple campaign stats",
-  "apple ad spend", "apple keyword report", "apple ads budget", "app eligibility", "search ads".
+description: Manages and analyses Apple Ads (formerly Apple Search Ads) App Store campaigns through apple-ads-cli on the Apple Ads Platform API v1. Covers account and access checks, campaigns, ad groups, keywords, negative keywords, creatives, ads and custom product pages, plus campaign, ad group, keyword, search term and ad reports, impression share and change history. Writes (create, pause, resume, bids, budgets, keywords) go through a dry-run and confirm protocol with a spend assessment. Use when the user asks about Apple Ads or Apple Search Ads spend, CPT, CPA, installs, taps, impressions, search terms, keyword bids, negative keywords, budget pacing or a weekly ads review, or wants to create or change an Apple Ads campaign. Not for App Store Connect metadata, builds or TestFlight.
 ---
 
-# Apple Ads CLI Skill
+# Apple Ads with apple-ads-cli
 
-You have access to `apple-ads-cli`, a read-only CLI for the Apple Search Ads Campaign Management API (v5). Use it to query campaigns, ad groups, ads, keywords, budget orders, pull performance reports, and check app eligibility on the App Store.
+## Read first
 
-## Quick start
+If `references/local.md` exists next to this file, read it before anything else. It holds this machine's install path, profile, ad account and protected campaigns, and its rules override the defaults here.
 
-```bash
-# Check if the CLI is available
-apple-ads-cli --help
+## Setup check
 
-# Get authenticated user info
-apple-ads-cli me
+1. Run `apple-ads-cli --version` and expect `2.x`. If the command is missing or reports 1.x, run `npm install -g apple-ads-cli` and check again. If it still reports 1.x, stop and say so: 1.x is a different tool on a retired API.
+2. Run `apple-ads-cli auth doctor`. If a check has `"ok": false`, follow its `hint`.
+3. Never ask for, print or paste a token or private key. To set up, ask the user to run `apple-ads-cli auth setup --client-id SEARCHADS.… --team-id SEARCHADS.… --key-id KEY_ID --private-key PATH` (values from Apple Ads > Account Settings > API; `PATH` is the key file, never the key itself).
 
-# Get access control list (find your orgId)
-apple-ads-cli acl
+## Hard rules
+
+- Read before you write.
+- Make no write without the user's explicit approval of that specific change.
+- Always run a write with `--dry-run` first, and show the user the plan and the `spend` block.
+- Create things paused. Enabling spend is a separate step, and only on instruction.
+- Never touch campaigns the user did not name.
+- Never print tokens or keys.
+- Exit code 6 means stop and ask. Do not edit the CLI config to get past it.
+
+## Intent to command
+
+| The user wants | Run |
+|---|---|
+| How the account is doing | `apple-ads-cli reports campaigns --last 7d` |
+| One campaign's trend | `reports campaigns --campaign-id ID --last 28d --granularity WEEKLY` |
+| Which ad groups or keywords work | `reports ad-groups --campaign-id ID --last 28d`, `reports keywords --campaign-id ID --last 28d` |
+| What people searched | `reports search-terms --campaign-id ID --last 28d` |
+| Spend by country | `reports campaigns --last 7d --group-by countryOrRegion` |
+| Why something is not running | `campaigns get ID`, then read `displayStatus` and `systemStatusReasons` |
+| The account structure | `campaigns list`, `ad-groups list --campaign-id ID`, `ads list --campaign-id ID` |
+| Keywords or negatives | `keywords list --campaign-id ID`, `negatives list --campaign-id ID` |
+| Add negatives | `negatives add --campaign-id ID --text "term" --dry-run` |
+| Add keywords | `keywords add --ad-group-id ID --text "term" --dry-run` |
+| Change bids | `keywords update KEYWORD_ID --bid 0.55 --dry-run` |
+| Pause or resume | `campaigns pause ID --dry-run` (also `ad-groups`, `ads`, `keywords`) |
+| Change a budget or end date | `campaigns update ID --daily-budget 5.00 --dry-run` |
+| A new campaign | `campaigns create --name … --adam-id … --daily-budget … --countries US --end YYYY-MM-DD --dry-run` |
+| Impression share | `insights impression-share --adam-id APP_ID --country US --last 14d` |
+| What changed recently | `history list --since 7d --campaign-id ID` |
+| App ID or product pages | `apps search --owned`, `product-pages list --adam-id APP_ID` |
+| Anything else | `apple-ads-cli schema commands`, or `api GET /path` |
+
+`reports campaigns` takes an optional `--campaign-id`; every other report needs one. `--last 7d` means the 7 full days before today in the account's time zone.
+
+## Safe write protocol
+
+1. Read the current state (`… get ID`, or the list for the parent).
+2. Run the write with `--dry-run`.
+3. Show the user `plan.steps` (method, URL, body), `spend.effect`, `spend.reasons` and, for campaigns, `spend.ceilings`. Point out any reason marked `largeStep`.
+4. On approval, run the same command with `--confirm` in place of `--dry-run`. Deletes also need `--force-delete`.
+5. Read `after` in the output: check that the changed field (bid, budget, status, end date) matches the plan, and report each entity's `displayStatus`.
+6. If a bulk write fails part-way (`PARTIAL_FAILURE` or `BULK_UNCONFIRMED`), list the parent before retrying. Items that already exist are skipped and shown under `existing`.
+
+## Weekly review
+
+Read `references/playbook.md` when the user asks for a review, optimisation or "what should I change". In short: check status and budget ceilings, pull 7-day and 28-day reports, mine search terms, propose bid changes of 15% or less, propose negatives, and make no write until the user approves each item.
+
+## Output shapes
+
+A list. If `truncated` is true, re-run with `--all` or the given offset:
+
+```json
+{"result":[{"id":111111111,"name":"Example","status":"ENABLED","displayStatus":"RUNNING"}],
+ "pagination":{"offset":0,"returned":1,"totalCount":1,"truncated":false}}
 ```
 
-If the CLI is not installed, install it:
+A report. `rows: []` means no activity in the range, not a failure:
 
-```bash
-npm install -g apple-ads-cli
+```json
+{"result":{"rows":[{"metadata":{"id":111111111,"name":"Example"},
+  "totalMetrics":{"impressions":1520,"taps":64,"localSpend":{"amount":"12.40","currency":"USD"},"tapInstalls":9}}],
+  "grandTotal":{"impressions":1520}},
+ "pagination":{"offset":0,"returned":1,"totalCount":1,"truncated":false},
+ "cli":{"timeRange":{"start":"2026-11-09","end":"2026-11-15"},"provisionalFrom":"2026-11-14"}}
 ```
 
-## Authentication
+A write plan:
 
-The CLI requires an **OAuth2 access token** and an **organization ID**. Credentials are resolved in this order:
-
-1. `--credentials <path>` flag (per-command)
-2. Environment variables: `APPLE_ADS_ACCESS_TOKEN` + `APPLE_ADS_ORG_ID`
-3. Auto-detected file: `~/.config/apple-ads-cli/credentials.json`
-
-The credentials JSON file must contain `access_token` and `org_id` fields. The access token is obtained by signing a JWT with your private key (ES256) and exchanging it at Apple's OAuth endpoint. Tokens expire after 1 hour.
-
-Before running any command, verify credentials are configured by running `apple-ads-cli me`. If it fails with a credentials error, ask the user to set up authentication.
-
-## Entity hierarchy
-
-```
-Organization (orgId)
- +-- Campaign
- |    +-- Ad Group
- |         +-- Ad
- |         +-- Targeting Keyword
- |         +-- Negative Keyword
- |    +-- Campaign-level Negative Keyword
- +-- Budget Order
- +-- App (by Adam ID)
+```json
+{"dryRun":true,"sent":false,
+ "plan":{"action":"campaigns.pause","steps":[{"method":"PUT","url":"https://api.ads.apple.com/v1/campaigns/111111111","body":{"status":"PAUSED"}}]},
+ "spend":{"effect":"decrease","reasons":[{"effect":"decrease","text":"campaign 111111111 paused"}]}}
 ```
 
-Organization IDs are numeric identifiers shown in the Apple Search Ads UI. The `acl` command returns all organizations the user has access to.
+## Errors and next steps
 
-## Monetary values
+Errors are JSON on stderr: `{"error":{"code","message","hint"}}`. Follow `hint` first.
 
-The Apple Search Ads API returns monetary values as objects with `amount` (string) and `currency` (string) fields, e.g. `{"amount": "12.34", "currency": "USD"}`. The amount is in the major currency unit -- no conversion needed.
+| Exit or message | Next step |
+|---|---|
+| 2 usage | Fix the flag the message names; see the command's `--help`. |
+| 3 auth | Run `auth doctor` and report the failing check. Do not work around it. |
+| 4 not found | List the parent to get a valid ID. |
+| 5 rate limit or transient | Wait a minute, then retry once. For a write, list before retrying. |
+| 6 `CONFIRM_REQUIRED` | Show the plan and ask for approval. |
+| 6 `PROTECTED` | Tell the user the campaign is protected and stop. |
+| 6 `FORCE_DELETE_REQUIRED` | Confirm the delete with the user, then add `--force-delete`. |
+| 6 `ABOVE_CEILING` | The bid or budget is above the sanity ceiling. Check for a typo (60 for 0.60); add `--allow-large` only if the user confirms the amount. |
+| "adGroupId or campaignId condition is required" | Add `--campaign-id` or `--ad-group-id`. |
+| "not valid for granularity" | Shorten the range or change `--granularity` (`schema reports`). |
+| "Operator … is not supported" | Check `apple-ads-cli schema filters <resource>`. |
+| `PARTIAL_FAILURE` | Read `results[].error`, fix those items, and re-run (existing items are skipped). |
+| `BULK_UNCONFIRMED` | Apple did not confirm every item. List the parent and check each item before retrying. |
 
-## Output format
+## References
 
-All commands output pretty-printed JSON by default. Use `--format compact` for single-line JSON (useful for piping).
-
-All listing commands support `--limit <n>` (default 20) and `--offset <n>` (default 0) for pagination. Single-entity commands (`me`, `acl`, `campaign`, `budget-order`, `app`, `app-eligibility`) do not support pagination.
-
-## Commands reference
-
-### Account discovery
-
-```bash
-# Access control list -- find your orgId and permissions
-apple-ads-cli acl
-
-# Authenticated user details (userId, parentOrgId)
-apple-ads-cli me
-```
-
-### Apps
-
-```bash
-# Search for iOS apps to promote
-apple-ads-cli search-apps "fitness"
-apple-ads-cli search-apps "my app name" --return-own-apps --limit 10 --offset 0
-
-# Check if an app is eligible for promotion
-apple-ads-cli app-eligibility 123456789
-
-# Get app details by Adam ID
-apple-ads-cli app 123456789
-```
-
-`search-apps` options:
-- `--return-own-apps` -- only return apps owned by the organization
-- `--limit <n>` -- number of results (default 20)
-- `--offset <n>` -- pagination offset (default 0)
-
-### Campaigns
-
-```bash
-# List all campaigns
-apple-ads-cli campaigns
-apple-ads-cli campaigns --limit 50 --offset 0
-
-# Get a specific campaign by ID
-apple-ads-cli campaign 123456
-```
-
-`campaigns` options:
-- `--limit <n>` -- number of results (default 20)
-- `--offset <n>` -- pagination offset (default 0)
-
-### Budget orders
-
-```bash
-# List all budget orders
-apple-ads-cli budget-orders
-apple-ads-cli budget-orders --limit 50 --offset 0
-
-# Get a specific budget order by ID
-apple-ads-cli budget-order 789012
-```
-
-`budget-orders` options:
-- `--limit <n>` -- number of results (default 20)
-- `--offset <n>` -- pagination offset (default 0)
-
-### Ad groups
-
-```bash
-# List ad groups for a campaign
-apple-ads-cli adgroups 123456
-apple-ads-cli adgroups 123456 --limit 50 --offset 0
-```
-
-Options:
-- `--limit <n>` -- number of results (default 20)
-- `--offset <n>` -- pagination offset (default 0)
-
-### Ads
-
-```bash
-# List ads for an ad group (requires both campaign ID and ad group ID)
-apple-ads-cli ads 123456 789012
-apple-ads-cli ads 123456 789012 --limit 50
-```
-
-Options:
-- `--limit <n>` -- number of results (default 20)
-- `--offset <n>` -- pagination offset (default 0)
-
-### Keywords
-
-```bash
-# List targeting keywords for an ad group (requires campaign ID and ad group ID)
-apple-ads-cli keywords 123456 789012
-apple-ads-cli keywords 123456 789012 --limit 50
-
-# List negative keywords for an ad group
-apple-ads-cli negative-keywords 123456 789012
-apple-ads-cli negative-keywords 123456 789012 --limit 50
-
-# List campaign-level negative keywords
-apple-ads-cli campaign-negative-keywords 123456
-apple-ads-cli campaign-negative-keywords 123456 --limit 50
-```
-
-All keyword listing commands support:
-- `--limit <n>` -- number of results (default 20)
-- `--offset <n>` -- pagination offset (default 0)
-
-### Reports
-
-Report commands use POST requests to the Apple Search Ads reporting API. All report commands require `--start-date` and `--end-date`.
-
-```bash
-# Campaign-level performance report
-apple-ads-cli report 123456 \
-  --start-date 2026-03-01 \
-  --end-date 2026-03-15
-
-# With granularity and grouping
-apple-ads-cli report 123456 \
-  --start-date 2026-03-01 \
-  --end-date 2026-03-15 \
-  --granularity DAILY \
-  --group-by countryOrRegion,deviceClass
-
-# Include records with zero metrics
-apple-ads-cli report 123456 \
-  --start-date 2026-03-01 \
-  --end-date 2026-03-15 \
-  --return-records-with-no-metrics
-
-# Ad group-level report
-apple-ads-cli report-adgroups 123456 \
-  --start-date 2026-03-01 \
-  --end-date 2026-03-15
-
-# Keyword-level report
-apple-ads-cli report-keywords 123456 \
-  --start-date 2026-03-01 \
-  --end-date 2026-03-15 \
-  --granularity WEEKLY
-```
-
-#### report (campaign-level)
-
-Options:
-- `--start-date <date>` -- start date, YYYY-MM-DD (required)
-- `--end-date <date>` -- end date, YYYY-MM-DD (required)
-- `--granularity <gran>` -- HOURLY, DAILY, WEEKLY, MONTHLY (default DAILY)
-- `--group-by <fields>` -- group by fields, comma-separated (e.g. countryOrRegion, deviceClass, ageRange, gender)
-- `--return-records-with-no-metrics` -- include records with no metrics
-
-#### report-adgroups (ad group-level)
-
-Options:
-- `--start-date <date>` -- start date, YYYY-MM-DD (required)
-- `--end-date <date>` -- end date, YYYY-MM-DD (required)
-- `--granularity <gran>` -- HOURLY, DAILY, WEEKLY, MONTHLY (default DAILY)
-
-#### report-keywords (keyword-level)
-
-Options:
-- `--start-date <date>` -- start date, YYYY-MM-DD (required)
-- `--end-date <date>` -- end date, YYYY-MM-DD (required)
-- `--granularity <gran>` -- HOURLY, DAILY, WEEKLY, MONTHLY (default DAILY)
-
-Note: `--group-by` and `--return-records-with-no-metrics` are only available on the `report` command (campaign-level), not on `report-adgroups` or `report-keywords`.
-
-All reports use UTC timezone (hardcoded by the CLI; the Apple API supports other timezones like ORTZ), return row totals and grand totals, and have an internal pagination limit of 1000 rows. If a report has more than 1000 matching rows, results will be truncated.
-
-## Workflow guidance
-
-### When the user asks for a quick overview
-
-1. Run `apple-ads-cli acl` to find the organization and verify access
-2. Run `apple-ads-cli campaigns` to list all campaigns
-3. Use `apple-ads-cli report <campaign-id> --start-date <date> --end-date <date>` for a performance snapshot
-
-### When the user asks for deep analysis
-
-1. Start with `report` at campaign level to identify overall performance
-2. Use `report-adgroups` to break down by ad group within a campaign
-3. Use `report-keywords` to identify top and bottom performing keywords
-4. Add `--group-by countryOrRegion` or `--group-by deviceClass` for geographic or device segmentation
-5. Add `--group-by ageRange,gender` for demographic breakdown
-6. Use `--granularity DAILY` with `--group-by` to spot trends over time
-
-### When the user asks about keyword performance
-
-1. Use `report-keywords` to get keyword-level metrics for a campaign
-2. Use `keywords <campaign-id> <adgroup-id>` to see keyword details (bid amounts, match type, status)
-3. Use `negative-keywords` and `campaign-negative-keywords` to review exclusions
-
-### When the user asks about app eligibility
-
-1. Use `search-apps` to find the app and get its Adam ID
-2. Use `app-eligibility <adam-id>` to check if it can run ads
-3. Use `app <adam-id>` for detailed app information
-
-### When the user asks about budget
-
-1. Use `budget-orders` to list all budget orders
-2. Use `budget-order <id>` for details on a specific budget order
-3. Use `campaigns` and `campaign <id>` to check campaign-level budget settings
-
-## Error handling
-
-- **Authentication errors** -- ask the user to verify their access token (expires after 1 hour) and org_id
-- **Missing credentials** -- the CLI checks for `access_token` and `org_id` in the credentials file; both are required
-- **Empty results** -- check the date range, campaign status, and whether the organization has active campaigns
-- **Invalid granularity** -- must be one of HOURLY, DAILY, WEEKLY, MONTHLY
-- **Report errors** -- verify the campaign ID exists and the date range is valid (start before end)
-
-## API documentation references
-
-- [apple-ads-cli documentation](https://github.com/Bin-Huang/apple-ads-cli)
-- [Apple Search Ads API overview](https://developer.apple.com/documentation/apple_ads)
-- [OAuth setup guide](https://developer.apple.com/documentation/apple_ads/implementing-oauth-for-the-apple-search-ads-api)
-- [Campaign Management API v5](https://developer.apple.com/documentation/apple_ads/apple-search-ads-campaign-management-api-5)
-- [Reports API](https://developer.apple.com/documentation/apple_ads/reports)
+- `references/commands.md`: every command with flags and an example. Read when a command or flag is not in the table above.
+- `references/reports.md`: report kinds, required filters, metrics, groupBy, span rules, Low Volume and provisional days. Read before any report question that is not a simple total.
+- `references/playbook.md`: account structure, match types, negatives, bids, budgets and the 10-step weekly review. Read for reviews and recommendations.

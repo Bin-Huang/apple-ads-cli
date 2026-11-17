@@ -1,6 +1,6 @@
 {
   "name": "apple-ads-cli",
-  "version": "1.0.4",
+  "version": "2.0.0",
   "description": "Apple Ads CLI & Skills for AI agents",
   "type": "module",
   "bin": {
@@ -8,12 +8,18 @@
   },
   "files": [
     "dist",
+    "skills",
+    "!skills/*/references/local.md",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "CHANGELOG.md"
   ],
   "scripts": {
-    "build": "tsc",
-    "prepack": "pnpm build"
+    "build": "tsc -p tsconfig.json",
+    "test": "tsc -p tsconfig.test.json && node --test \"build-test/test/**/*.test.js\"",
+    "test:live": "tsc -p tsconfig.test.json && APPLE_ADS_LIVE=1 node --test build-test/test/live.smoke.js",
+    "clean": "rm -rf dist build-test",
+    "prepack": "npm run build"
   },
   "author": "Benn Huang <tohuangbin@gmail.com>",
   "license": "Apache-2.0",
@@ -22,18 +28,18 @@
     "url": "https://github.com/Bin-Huang/apple-ads-cli.git"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "keywords": [
     "apple-ads",
+    "apple-search-ads",
     "ads",
     "cli",
     "ai-agent",
     "api"
   ],
-  "packageManager": "pnpm@10.32.1+sha512.a706938f0e89ac1456b6563eab4edf1d1faf3368d1191fc5c59790e96dc918e4456ab2e67d613de1043d2e8c81f87303e6b40d4ffeca9df15ef1ad567348f2be",
   "devDependencies": {
-    "@types/node": "^25.5.0",
+    "@types/node": "^22.18.0",
     "typescript": "^5.9.3"
   },
   "dependencies": {
